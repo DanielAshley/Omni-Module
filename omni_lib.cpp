@@ -1,6 +1,13 @@
 
+
+#include "WmraTypes.h"
 #include "omni_lib.h"
 #include "tinythread.h"
+
+/* Sensable's includes */
+#include <HD/hd.h>
+#include <HDU/hduError.h>
+#include <HDU/hduVector.h>
 
 #include <windows.h>
 #include <string>
@@ -8,7 +15,6 @@
 #include <conio.h>
 #include <iostream>
 #include <math.h>
-#include "WmraTypes.h"
 
 
 using namespace std;
@@ -217,7 +223,7 @@ WMRA::Pose omni::getDeltaPose()
 	return p;
 }
 
-vector<double> omni::getKinematicPose()
-{
-	return tranMatrix;
-}
+//vector<double> omni::getKinematicPose()
+//{
+//	return tranMatrix;
+//}

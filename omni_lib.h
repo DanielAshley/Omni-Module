@@ -3,27 +3,24 @@
 
 #include <vector>
 
-/* Sensable's includes */
-#include <HD/hd.h>
-#include <HDU/hduError.h>
-#include <HDU/hduVector.h>
+#pragma once
+namespace WMRA{
+	class Pose;
+	typedef unsigned int HHD;
+};
 
-#include "WmraTypes.h"
+namespace WMRA{
+	class omni{
+	public:
+		omni();
+		~omni();
+		WMRA::Pose getDeltaPose();
+		static void omniThread(void *aArg);
+		HHD hHD;
 
-class omni{
-public:
-	omni();
-	~omni();
-	WMRA::Pose getDeltaPose();
-	vector<double> getKinematicPose();
-	static void omniThread(void *aArg);
-//
-	//HDSchedulerHandle gCallbackHandle;
-//	HDCallbackCode HDCALLBACK omniCallback(void *pUserData);
-	HHD hHD;
-
-private:
-	double gain;
+	private:
+		double gain;
+	};
 };
 
 #endif;

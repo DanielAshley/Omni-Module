@@ -1,5 +1,4 @@
 
-
 #include "WmraTypes.h"
 #include "omni_lib.h"
 #include "tinythread.h"
@@ -21,10 +20,6 @@ using namespace std;
 using namespace tthread;
 using namespace WMRA;
 
-
-WMRA::Pose p;
-vector<double> tranMatrix(16);
-
 tthread::thread* t;
 int count_ms;
 HDSchedulerHandle gCallbackHandle;
@@ -41,8 +36,6 @@ HDCallbackCode HDCALLBACK omniCallback(void *pUserData)
     hdGetDoublev(HD_CURRENT_POSITION, position);
 	hduVector3Dd velocity;
     hdGetDoublev(HD_CURRENT_VELOCITY, velocity);
-	HDdouble tran[16];
-    hdGetDoublev(HD_CURRENT_TRANSFORM, tran);
 
 	count_ms++;
 
@@ -66,6 +59,45 @@ HDCallbackCode HDCALLBACK omniCallback(void *pUserData)
 	forceMagnitude = 0.1;
 
 
+	// Setting X,Y,Z pose positions
+	if(position[0] >= 10 || position[0] <= -10)
+		p.y = -position[0];
+	else
+		p.y = 0;
+
+	if(position[1] >= 10 || position[1] <= -10)
+		p.z = position[1];
+	else
+		p.z = 0;
+
+	if(position[2] >= 10 || position[2] <= -10)
+		p.x = -position[2];
+	else
+		p.x = 0;
+		
+	static hduVector3Dd gimbal_angles;
+	hdGetDoublev(HD_CURRENT_GIMBAL_ANGLES, gimbal_angles);		
+	// Setting Roll, Pitch, Yaw values
+	p.pitch = 0;
+	p.roll = 0;
+	p.yaw = 0;
+		
+	HDint nCurrentButtons, nLastButtons;
+    hdGetIntegerv(HD_CURRENT_BUTTONS, &nCurrentButtons);
+    hdGetIntegerv(HD_LAST_BUTTONS, &nLastButtons);
+    if ((nCurrentButtons & HD_DEVICE_BUTTON_1) != 0 && (nLastButtons & HD_DEVICE_BUTTON_1) == 0)
+    {
+        /* Detected button 1 down */
+        b1 = true;
+    }
+	
+	if ((nCurrentButtons & HD_DEVICE_BUTTON_2) != 0 && (nLastButtons & HD_DEVICE_BUTTON_2) == 0)
+    {
+        /* Detected button 2 down */
+        b2 = true;
+    }
+	
+	
 
 	//**************************//
 	//*** STOP EDITING HERE ***//
@@ -73,17 +105,6 @@ HDCallbackCode HDCALLBACK omniCallback(void *pUserData)
 
 	// limiting the force to protect the Omnis
 	// DO NOT EDIT THE FOLLOWING
-	//hduVector3Dd f = forceMagnitude * forceDirection;
-	//if(forceDirection[0] > 2)
-	//	forceDirection[0] = 2;
-	//if(forceDirection[0] < -2)
-	//	forceDirection[0] = -2;
-	//if(forceDirection[1] > 2)
-	//	forceDirection[1] = 2;
-	//if(forceDirection[1] < -2)
-	//	forceDirection[1] = -2;
-	//forceDirection[2] = 0.0;
-
 	hduVector3Dd f = forceMagnitude * forceDirection;
 	if(f[0] > 2)
 		f[0] = 2;
@@ -99,22 +120,6 @@ HDCallbackCode HDCALLBACK omniCallback(void *pUserData)
 		f[2] = -2;
 	
 	
-	if(position[0] >= 10 || position[0] <= -10)
-		p.y = -position[0];
-	else
-		p.y = 0;
-
-	if(position[1] >= 10 || position[1] <= -10)
-		p.z = position[1];
-	else
-		p.z = 0;
-
-	if(position[2] >= 10 || position[2] <= -10)
-		p.x = -position[2];
-	else
-		p.x = 0;
-	
-
 	// calculate and command desired force
 	
 	hdSetDoublev(HD_CURRENT_FORCE, f);
@@ -136,8 +141,9 @@ HDCallbackCode HDCALLBACK omniCallback(void *pUserData)
 
 omni::omni()
 {
+	b1 = false;
+	b2 = false;
 	gCallbackHandle = 0;
-	omni::gain = 20.0;
 
 	HDErrorInfo error;
 	count_ms = 0;
@@ -183,47 +189,22 @@ omni::~omni()
     hdDisableDevice(hHD);
 
 }
-void omni::omniThread(void *aArg)
-{
-	   
-    // Application loop - schedule our call to the main callback.
-    //HDSchedulerHandle gCallbackHandle = hdScheduleAsynchronous(
-    //  omniCallback, 0, HD_DEFAULT_SCHEDULER_PRIORITY);
-
-    printf("Sphere example.\n");
-    printf("Move the device around to feel a frictionless sphere\n\n");
-    printf("Press any key to quit.\n\n");
-
-    while (!_kbhit())
-    {
-        if (!hdWaitForCompletion(gCallbackHandle, HD_WAIT_CHECK_STATUS))
-        {
-            fprintf(stderr, "\nThe main scheduler callback has exited\n");
-            fprintf(stderr, "\nPress any key to quit.\n");
-            getch();
-            break;
-        }
-    }
-
-	//while(1)
-	//{
-	//	cout << "BOOM" << endl;
-	//}
-}
 
 WMRA::Pose omni::getDeltaPose()
 {
-//	p.x = p.x*gain;
-//	p.y = p.y*gain;
-//	p.z = p.z*gain;
-	p.pitch = 0;//p.pitch*gain;
-	p.roll = 0;//p.roll*gain;
-	p.yaw = 0;//p.yaw*gain;
-
 	return p;
 }
 
-//vector<double> omni::getKinematicPose()
-//{
-//	return tranMatrix;
-//}
+WMRA::bool omni::checkButton1()
+{
+	int tgt = b1;
+	b1 = false;
+	return tgt;
+}
+
+WMRA::bool omni::checkButton2()
+{
+	int tgt = b2;
+	b2 = false;
+	return tgt;
+}

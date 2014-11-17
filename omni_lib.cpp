@@ -23,6 +23,9 @@ using namespace WMRA;
 tthread::thread* t;
 int count_ms;
 HDSchedulerHandle gCallbackHandle;
+WMRA::Pose p;
+bool b1,b2;
+vector<double> baseOrientation;
 
 /******************************************************************************
  * Scheduler callback for reading the robot position.  Called every 1ms 
@@ -47,8 +50,6 @@ HDCallbackCode HDCALLBACK omniCallback(void *pUserData)
 	//*** START EDITING HERE ***//
 	//**************************//
 	
-	for(int i = 0; i < 16; i++)
-		tranMatrix[i] = tran[i];
 
 	//cout << position[0] << ", " << position[1] << ", " << position[2] << endl;
 	//cout << velocity[0] << ", " << velocity[1] << ", " << velocity[2] << endl;
@@ -77,25 +78,52 @@ HDCallbackCode HDCALLBACK omniCallback(void *pUserData)
 		
 	static hduVector3Dd gimbal_angles;
 	hdGetDoublev(HD_CURRENT_GIMBAL_ANGLES, gimbal_angles);		
-	// Setting Roll, Pitch, Yaw values
-	p.pitch = 0;
-	p.roll = 0;
-	p.yaw = 0;
 		
 	HDint nCurrentButtons, nLastButtons;
     hdGetIntegerv(HD_CURRENT_BUTTONS, &nCurrentButtons);
-    hdGetIntegerv(HD_LAST_BUTTONS, &nLastButtons);
-    if ((nCurrentButtons & HD_DEVICE_BUTTON_1) != 0 && (nLastButtons & HD_DEVICE_BUTTON_1) == 0)
+//    if ((nCurrentButtons & HD_DEVICE_BUTTON_1) != 0 && (nLastButtons & HD_DEVICE_BUTTON_1) == 0)
+    if ((nCurrentButtons & HD_DEVICE_BUTTON_1) != 0)
     {
         /* Detected button 1 down */
-        b1 = true;
+		if(b1==false)
+		{
+			b1 = true;
+			baseOrientation[0] = gimbal_angles[0];
+			baseOrientation[1] = gimbal_angles[1];
+			baseOrientation[2] = gimbal_angles[2];
+		}
+		// Setting Roll, Pitch, Yaw values
+		p.pitch = baseOrientation[1] - gimbal_angles[1];
+		p.roll = baseOrientation[2] - gimbal_angles[2];
+		p.yaw = baseOrientation[0] - gimbal_angles[0];
+		//cout << "Pitch: " << p.pitch << endl;
+
     }
-	
-	if ((nCurrentButtons & HD_DEVICE_BUTTON_2) != 0 && (nLastButtons & HD_DEVICE_BUTTON_2) == 0)
+	else
+	{
+        /* Detected button 1 up */
+		b1 = false;
+		baseOrientation[0] = 0;
+		baseOrientation[1] = 0;
+		baseOrientation[2] = 0;
+		p.pitch = 0;
+		p.roll = 0;
+		p.yaw = 0;
+		
+		//cout << "PPPPPPitch: " << p.pitch << endl;
+
+	}
+
+	if ((nCurrentButtons & HD_DEVICE_BUTTON_2) != 0)
     {
         /* Detected button 2 down */
         b2 = true;
     }
+	else
+	{
+        /* Detected button 2 up */
+		b2 = false;
+	}
 	
 	
 
@@ -141,6 +169,8 @@ HDCallbackCode HDCALLBACK omniCallback(void *pUserData)
 
 omni::omni()
 {
+	baseOrientation.resize(3);
+	this->initialized = false;
 	b1 = false;
 	b2 = false;
 	gCallbackHandle = 0;
@@ -151,17 +181,20 @@ omni::omni()
     // Initialize the default haptic device.
     hHD = hdInitDevice(HD_DEFAULT_DEVICE);
     if (HD_DEVICE_ERROR(error = hdGetError()))
-    {
+    {	
+		this->initialized = false;
         hduPrintError(stderr, &error, "Failed to initialize haptic device");
         fprintf(stderr, "\nPress any key to quit.\n");
         _getch();
         //return -1;
     }
-
+	else
+		this->initialized = true;
 	printf("Omni Callback setup complete\n");
 	
     /* to enable the motors call:  hdEnable(HD_FORCE_OUTPUT); */
 	hdEnable(HD_FORCE_OUTPUT);
+
 
     /* Start the haptic rendering loop. */
     hdStartScheduler();
@@ -176,7 +209,7 @@ omni::omni()
     // servoloop rates and command forces if the user penetrates the plane.
     gCallbackHandle = hdScheduleAsynchronous(omniCallback, 0, HD_MAX_SCHEDULER_PRIORITY);
 
-
+	this->initialized = true;
 	//t = new thread(omniThread,this);
 }
 
@@ -195,16 +228,19 @@ WMRA::Pose omni::getDeltaPose()
 	return p;
 }
 
-WMRA::bool omni::checkButton1()
+bool omni::checkButton1()
 {
-	int tgt = b1;
-	b1 = false;
+	bool tgt = b1;
 	return tgt;
 }
 
-WMRA::bool omni::checkButton2()
+bool omni::checkButton2()
 {
-	int tgt = b2;
-	b2 = false;
+	bool tgt = b2;
 	return tgt;
+}
+
+int omni::isInitialized()
+{
+	return this->initialized;
 }

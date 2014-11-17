@@ -4,6 +4,7 @@
 #include <vector>
 
 #pragma once
+
 namespace WMRA{
 	class Pose;
 	typedef unsigned int HHD;
@@ -17,11 +18,10 @@ namespace WMRA{
 		WMRA::Pose getDeltaPose();
 		bool checkButton1();
 		bool checkButton2();
+		int isInitialized();
 	private:
 		HHD hHD;
-		WMRA::Pose p;
-		bool b1;
-		bool b2;
+		int initialized;
 	};
 };
 
